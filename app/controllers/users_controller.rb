@@ -1,6 +1,6 @@
 class UsersController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:following]
-  before_action :set_user, only: %i[ show edit update destroy ]
+  skip_before_action :verify_authenticity_token, only: [:following, :clock_in, :clock_out]
+  before_action :set_user, only: %i[ show clock_in clock_out following ]
 
   # GET /users or /users.json
   def index
@@ -13,9 +13,40 @@ class UsersController < ApplicationController
     render json: @user
   end
 
+  #POST /users/1/clock_in
+  def clock_in
+    # Find the latest sleep record for the user
+    latest_record = @user.sleep_records.order(created_at: :desc).first
+
+    if latest_record && latest_record.clock_out.nil?
+      render json: { error: "User has already clocked in and not clocked out yet." }, status: :bad_request and return
+    end
+
+    # Create a new sleep record with the current time as clock_in
+    new_record = @user.sleep_records.create(clock_in: Time.current)
+
+    if new_record.persisted?
+      render json: { message: "Clock-in successful", sleep_record: new_record }, status: :ok
+    else
+      render json: { error: "Failed to clock in" }, status: :internal_server_error
+    end
+  end
+
+  #POST /users/1/clock_out
+  def clock_out
+    # Find the latest sleep record for the user
+    latest_record = @user.sleep_records.order(created_at: :desc).first
+
+    if latest_record && latest_record.clock_out.nil?
+      latest_record.update(clock_out: Time.current, duration: ((Time.current - latest_record.clock_in) / 3600.0).round(2))
+      render json: { message: "Clock-out successful", sleep_record: latest_record }, status: :ok
+    else
+      render json: { error: "User has not clocked in yet or has already clocked out." }, status: :bad_request and return
+    end
+  end
+
   # POST /users/1/following
   def following
-    @user = params[:id]
     @operation = following_params[:operation]
     @following = following_params[:following_user_id]
 
@@ -26,12 +57,12 @@ class UsersController < ApplicationController
     unless ["follow", "unfollow"].include?(@operation)
       render json: { error: "Invalid operation parameter", operation: @operation }, status: :bad_request and return
     end
-    unless User.exists?(@user) && User.exists?(@following)
+    unless @user.present? && User.exists?(@following)
       render json: { error: "User not found" }, status: :bad_request and return
     end
 
     # Validate that a user cannot follow/unfollow themselves
-    if @user.to_i == @following.to_i
+    if @user.id == @following.to_i
       render json: { error: "A user cannot follow/unfollow themselves" }, status: :bad_request and return
     end
 
@@ -50,54 +81,6 @@ class UsersController < ApplicationController
     end
 
     render json: { user: @user, operation: @operation, following: @following }
-  end
-
-  # GET /users/new
-  def new
-    @user = User.new
-    render json: {status: "success"}
-  end
-
-  # GET /users/1/edit
-  def edit
-  end
-
-  # POST /users or /users.json
-  def create
-    @user = User.new(user_params)
-
-    respond_to do |format|
-      if @user.save
-        format.html { redirect_to @user, notice: "User was successfully created." }
-        format.json { render :show, status: :created, location: @user }
-      else
-        format.html { render :new, status: :unprocessable_entity }
-        format.json { render json: @user.errors, status: :unprocessable_entity }
-      end
-    end
-  end
-
-  # PATCH/PUT /users/1 or /users/1.json
-  def update
-    respond_to do |format|
-      if @user.update(user_params)
-        format.html { redirect_to @user, notice: "User was successfully updated.", status: :see_other }
-        format.json { render :show, status: :ok, location: @user }
-      else
-        format.html { render :edit, status: :unprocessable_entity }
-        format.json { render json: @user.errors, status: :unprocessable_entity }
-      end
-    end
-  end
-
-  # DELETE /users/1 or /users/1.json
-  def destroy
-    @user.destroy!
-
-    respond_to do |format|
-      format.html { redirect_to users_path, notice: "User was successfully destroyed.", status: :see_other }
-      format.json { head :no_content }
-    end
   end
 
   private
