@@ -26,7 +26,7 @@ class UsersController < ApplicationController
     end
 
     # Create a new sleep record with the current time as clock_in
-    @user.sleep_records.create(clock_in: Time.current)
+    new_record = @user.sleep_records.create(clock_in: Time.current)
     render json: { message: "Clock-in successful", sleep_record: new_record }, status: :ok
   end
 
