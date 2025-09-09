@@ -4,10 +4,12 @@ class CreateSleepRecords < ActiveRecord::Migration[8.0]
       t.timestamp :clock_in
       t.timestamp :clock_out
       t.float :duration
+      t.references :user, null: false, foreign_key: true
 
+      t.timestamps
+      
+    end
       add_index :sleep_records, [:clock_in]
       add_index :sleep_records, [:duration]
-      t.timestamps
-    end
   end
 end
