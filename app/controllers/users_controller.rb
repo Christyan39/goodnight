@@ -1,6 +1,9 @@
 class UsersController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:following, :clock_in, :clock_out]
-  before_action :set_user, only: %i[ show clock_in clock_out following sleep_records]
+  rescue_from StandardError, with: :internal_error
+  rescue_from ActiveRecord::RecordInvalid, with: :bad_request
+  skip_before_action :verify_authenticity_token, only: [ :clock_in, :clock_out, :sleep_records, :follow, :unfollow]
+  before_action :set_user, only: %i[ show clock_in clock_out sleep_records follow unfollow]
+  before_action :set_following_user, only: %i[ follow unfollow ]
 
   # GET /users or /users.json
   def index
@@ -23,13 +26,8 @@ class UsersController < ApplicationController
     end
 
     # Create a new sleep record with the current time as clock_in
-    new_record = @user.sleep_records.create(clock_in: Time.current)
-
-    if new_record.persisted?
-      render json: { message: "Clock-in successful", sleep_record: new_record }, status: :ok
-    else
-      render json: { error: "Failed to clock in" }, status: :internal_server_error
-    end
+    @user.sleep_records.create(clock_in: Time.current)
+    render json: { message: "Clock-in successful", sleep_record: new_record }, status: :ok
   end
 
   #POST /users/1/clock_out
@@ -45,42 +43,44 @@ class UsersController < ApplicationController
     end
   end
 
-  # POST /users/1/following
-  def following
-    @operation = following_params[:operation]
-    @following = following_params[:following_user_id]
+  # POST /users/1/follow
+  def follow
+    # Validate that a user cannot follow/unfollow themselves
+    if @user.id == @following.id
+      render json: { error: "A user cannot follow/unfollow themselves" }, status: :bad_request and return
+    end
 
+    #Validate that the follow operation is idempotent
+    if UserFollowing.exists?(user_id: @user.id, following_user_id: @following.id)
+      render json: { error: "User is already following the specified user"}, status: :bad_request and return
+    end
+
+    # Perform follow operation here
+    UserFollowing.create!(user_id: @user.id, following_user_id: @following.id)
+    render json: { message: "Follow successful", user: @user.name, following: @following.name }
+  end
+
+  # POST /users/1/unfollow
+  def unfollow
     # Validate presence of required parameters
-    if @user.blank? || @following.blank?
-      render json: { error: "Missing required parameters" }, status: :bad_request and return
-    end
-    unless ["follow", "unfollow"].include?(@operation)
-      render json: { error: "Invalid operation parameter", operation: @operation }, status: :bad_request and return
-    end
-    unless @user.present? && User.exists?(@following)
+    unless @user.present? && @following.present?
       render json: { error: "User not found" }, status: :bad_request and return
     end
 
     # Validate that a user cannot follow/unfollow themselves
-    if @user.id == @following.to_i
+    if @user.id == @following.id
       render json: { error: "A user cannot follow/unfollow themselves" }, status: :bad_request and return
     end
 
+    user_following = UserFollowing.find_by(user_id: @user.id, following_user_id: @following.id)
     #Validate that the follow/unfollow operation is idempotent
-    if @operation == "follow" && UserFollowing.exists?(user_id: @user, following_user_id: @following)
-      render json: { error: "User is already following the specified user", operation: @operation }, status: :bad_request and return
-    elsif @operation == "unfollow" && !UserFollowing.exists?(user_id: @user, following_user_id: @following)
+    if user_following.nil?
       render json: { error: "User is not following the specified user", operation: @operation }, status: :bad_request and return
     end
 
     # Perform follow/unfollow operation here
-    if @operation == "follow"
-      UserFollowing.create(user_id: @user, following_user_id: @following)
-    elsif @operation == "unfollow"
-      UserFollowing.find_by(user_id: @user, following_user_id: @following)&.destroy
-    end
-
-    render json: { user: @user, operation: @operation, following: @following }
+    user_following&.destroy
+    render json: { message: "Unfollow successful", user: @user.name, unfollowed: @following.name }
   end
 
   # GET /users/1/sleep_records
@@ -99,15 +99,30 @@ class UsersController < ApplicationController
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_user
-      @user = User.find(params.expect(:id))
+      begin
+        @user = User.find(params.expect(:id))
+      rescue ActiveRecord::RecordNotFound
+        render json: { error: "User not found" }, status: :not_found
+      end
+    end
+    def set_following_user
+      begin
+        @following = User.find(params.expect(:following_user_id))
+      rescue ActiveRecord::RecordNotFound
+        render json: { error: "Following user not found" }, status: :not_found
+      end
     end
 
     # Only allow a list of trusted parameters through.
-    def user_params
-      params.expect(user: [ :name ])
+    def following_params
+      params.permit(:following_user_id)
     end
 
-    def following_params
-      params.permit(:id, :operation, :following_user_id)
+    def internal_error(exception)
+      render json: { error: "Internal server error", details: exception.message }, status: :internal_server_error
     end
-end
+
+    def bad_request(exception)
+      render json: { error: "Bad request", details: exception.message }, status: :bad_request
+    end
+  end
