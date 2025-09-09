@@ -11,6 +11,7 @@ Rails.application.routes.draw do
   post "users/:id/following" => "users#following", as: :user_following
   post "users/:id/clock_in" => "users#clock_in", as: :user_clock_in
   post "users/:id/clock_out" => "users#clock_out", as: :user_clock_out
+  get "users/:id/sleep_records" => "users#sleep_records", as: :user_sleep_records
 
   # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest

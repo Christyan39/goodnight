@@ -1,6 +1,6 @@
 class UsersController < ApplicationController
   skip_before_action :verify_authenticity_token, only: [:following, :clock_in, :clock_out]
-  before_action :set_user, only: %i[ show clock_in clock_out following ]
+  before_action :set_user, only: %i[ show clock_in clock_out following sleep_records]
 
   # GET /users or /users.json
   def index
@@ -81,6 +81,19 @@ class UsersController < ApplicationController
     end
 
     render json: { user: @user, operation: @operation, following: @following }
+  end
+
+  # GET /users/1/sleep_records
+  def sleep_records
+    limit = params[:limit] || 10
+    page = params[:page] || 1
+    offset = (page.to_i - 1) * limit.to_i
+    sleep_records = @user.sleep_records.order(created_at: :desc).limit(limit).offset(offset)
+    if sleep_records.present?
+      render json: sleep_records, status: :ok
+    else
+      render json: { error: "No sleep records found" }, status: :not_found
+    end
   end
 
   private
