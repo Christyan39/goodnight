@@ -9,11 +9,15 @@ Rails.application.routes.draw do
   
   # Custom route for following action
   post "users/:id/following" => "users#following", as: :user_following
-  post "users/:id/clock_in" => "users#clock_in", as: :user_clock_in
-  post "users/:id/clock_out" => "users#clock_out", as: :user_clock_out
-  get "users/:id/sleep_records" => "users#sleep_records", as: :user_sleep_records
-  post "users/:id/follow" => "users#follow", as: :user_follow
-  post "users/:id/unfollow" => "users#unfollow", as: :user_unfollow
+  
+  #authentication needed
+  post "login" => "users#login", as: :login
+  get "self/profile" => "users#profile", as: :profile
+  post "self/clock_in" => "users#clock_in", as: :user_clock_in
+  post "self/clock_out" => "users#clock_out", as: :user_clock_out
+  post "self/follow" => "users#follow", as: :user_follow
+  post "self/unfollow" => "users#unfollow", as: :user_unfollow
+  get "self/sleep_records" => "users#sleep_records", as: :user_sleep_records
 
   # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
