@@ -97,11 +97,6 @@ class UsersController < ApplicationController
 
   # POST /self/unfollow
   def unfollow
-    # Validate presence of required parameters
-    unless @current_user.present? && @following.present?
-      render json: { error: "User not found" }, status: :bad_request and return
-    end
-
     # Validate that a user cannot follow/unfollow themselves
     if @current_user.id == @following.id
       render json: { error: "A user cannot follow/unfollow themselves" }, status: :bad_request and return
@@ -186,10 +181,5 @@ class UsersController < ApplicationController
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Following user not found" }, status: :not_found
       end
-    end
-
-    # Only allow a list of trusted parameters through.
-    def following_params
-      params.permit(:following_user_id)
     end
   end
