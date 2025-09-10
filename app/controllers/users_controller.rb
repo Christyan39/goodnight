@@ -138,6 +138,39 @@ class UsersController < ApplicationController
     render json: { sleep_records: sleep_records, meta: { total: total_records, page: page, per_page: limit } }, status: :ok
   end
 
+  #GET /self/followings/sleep_records
+  def following_sleep_records
+    limit = params[:limit] || -1
+    page = params[:page] || 1
+    offset = (page.to_i - 1) * limit.to_i 
+    max_date =  Time.current - 7.days
+
+    if limit.to_i <= 0
+      sleep_records = SleepRecord.select('sleep_records.*, users.*').joins(
+        "INNER JOIN user_followings ON sleep_records.user_id = user_followings.following_user_id
+         INNER JOIN users ON users.id = sleep_records.user_id       
+        "
+      ).where(user_followings: { user_id: @current_user.id }).where("sleep_records.created_at >= ?", max_date).order(duration: :desc)
+    else
+      sleep_records = SleepRecord.select('sleep_records.*, users.*').joins(
+        "INNER JOIN user_followings ON sleep_records.user_id = user_followings.following_user_id
+         INNER JOIN users ON users.id = sleep_records.user_id       
+        "
+      ).where(user_followings: { user_id: @current_user.id }).where("sleep_records.created_at >= ?", max_date).order(duration: :desc).limit(limit).offset(offset) 
+    end
+
+    # Pagination metadata
+    total_records = SleepRecord.joins(
+        "INNER JOIN user_followings ON sleep_records.user_id = user_followings.following_user_id
+         INNER JOIN users ON users.id = sleep_records.user_id       
+        "
+      ).where(user_followings: { user_id: @current_user.id }).where("sleep_records.created_at >= ?", max_date).count
+    if limit.to_i <= 0
+      limit = total_records
+    end
+    render json: { sleep_records: sleep_records, meta: { total: total_records, page: page, per_page: limit } }, status: :ok
+  end
+
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_user

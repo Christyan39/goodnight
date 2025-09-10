@@ -16,6 +16,7 @@ Rails.application.routes.draw do
   post "self/follow" => "users#follow", as: :user_follow
   post "self/unfollow" => "users#unfollow", as: :user_unfollow
   get "self/sleep_records" => "users#sleep_records", as: :user_sleep_records
+  get "/self/followings/sleep_records" => "users#following_sleep_records", as: :user_following_sleep_records
 
   # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest

@@ -1,5 +1,5 @@
 class User < ApplicationRecord
-has_many :following, through: :user_followings, source: :user, dependent: :destroy
-has_many :followers, through: :user_followings, source: :following_user, dependent: :destroy
+has_many :followings, class_name: 'UserFollowing', foreign_key: :user_id, dependent: :destroy
+has_many :followers, class_name: 'UserFollowing', foreign_key: :following_user_id, dependent: :destroy
 has_many :sleep_records, dependent: :destroy
 end
