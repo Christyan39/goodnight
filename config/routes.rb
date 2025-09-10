@@ -8,9 +8,7 @@ Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
   
   # Custom route for following action
-  post "users/:id/following" => "users#following", as: :user_following
-  
-  #authentication needed
+  # Authentication needed
   post "login" => "users#login", as: :login
   get "self/profile" => "users#profile", as: :profile
   post "self/clock_in" => "users#clock_in", as: :user_clock_in
