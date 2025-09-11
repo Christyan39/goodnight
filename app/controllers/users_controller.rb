@@ -61,8 +61,10 @@ class UsersController < ApplicationController
     end
 
     # Create a new sleep record with the current time as clock_in
-    new_record = @current_user.sleep_records.create(clock_in: Time.current)
-    render json: { message: "Clock-in successful", sleep_record: new_record }, status: :ok
+    @current_user.sleep_records.create(clock_in: Time.current)
+
+    sleep_records = @current_user.sleep_records.order(created_at: :desc)
+    render json: {  message: "Clock-in successful", sleep_records: sleep_records }, status: :ok
   end
 
   #POST /self/clock_out
@@ -72,7 +74,8 @@ class UsersController < ApplicationController
 
     if latest_record && latest_record.clock_out.nil?
       latest_record.update(clock_out: Time.current, duration: ((Time.current - latest_record.clock_in) / 60.0).round(2))
-      render json: { message: "Clock-out successful", sleep_record: latest_record }, status: :ok
+      sleep_records = @current_user.sleep_records.order(created_at: :desc)
+      render json: { message: "Clock-out successful", sleep_records: sleep_records }, status: :ok
     else
       render json: { error: "User has not clocked in yet or has already clocked out." }, status: :bad_request and return
     end

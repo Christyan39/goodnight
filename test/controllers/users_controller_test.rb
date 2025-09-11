@@ -57,7 +57,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     json = JSON.parse(@response.body)
     assert_equal "Clock-in successful", json["message"]
-    assert json["sleep_record"].present?
+    assert json["sleep_records"].present?
   end
 
   test "should not clock in if already clocked in" do
@@ -82,7 +82,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     json = JSON.parse(@response.body)
     assert_equal "Clock-out successful", json["message"]
-    assert json["sleep_record"].present?
+    assert json["sleep_records"].present?
   end
   
   test "should not clock out if not clocked in" do
